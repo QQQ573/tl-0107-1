@@ -1,0 +1,20 @@
+{
+  "name": "tl-0097-1",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "phaser": "^3.90.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
+  }
+}
