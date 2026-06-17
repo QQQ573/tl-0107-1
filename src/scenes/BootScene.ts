@@ -49,8 +49,12 @@ export class BootScene extends Phaser.Scene {
     });
     subtitle.setOrigin(0.5);
 
-    this.time.delayedCall(500, () => {
-      this.scene.start('MenuScene');
+    this.time.addEvent({
+      delay: 500,
+      callback: () => {
+        this.scene.start('MenuScene');
+      },
+      callbackScope: this,
     });
   }
 }
