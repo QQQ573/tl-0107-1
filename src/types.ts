@@ -46,5 +46,33 @@ export interface ConfusionEntry {
   commonMistake: string;
 }
 
+export interface WrongItemRecord {
+  itemId: string;
+  itemLabel: string;
+  wrongCount: number;
+  lastMisclassifiedCategory: string;
+}
+
+export interface LevelRecord {
+  level: number;
+  bestSafetyScore: number;
+  bestAccuracy: number;
+  bestSupervisorReviews: number;
+  playCount: number;
+  stars: number;
+  completed: boolean;
+  lastPlayTime: number;
+  wrongItems: WrongItemRecord[];
+}
+
+export interface GameRecords {
+  levelRecords: LevelRecord[];
+  totalPlayCount: number;
+  totalCorrectCount: number;
+  totalItemCount: number;
+  lastPlayTime: number;
+}
+
 export const GAME_WIDTH = 960;
 export const GAME_HEIGHT = 640;
+export const STORAGE_KEY = 'luggage_check_game_records';

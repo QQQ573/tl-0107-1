@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, LevelResult, ConfusionEntry } from '../types';
 import { LEVELS } from '../data/levels';
+import { loadRecords, saveRecords, updateRecordsWithResult, calculateStars } from '../utils/storage';
 
 export class ResultsScene extends Phaser.Scene {
   constructor() {
@@ -11,6 +12,17 @@ export class ResultsScene extends Phaser.Scene {
     const levelIndex = data.levelIndex ?? 0;
     const level = LEVELS[levelIndex];
     this.cameras.main.setBackgroundColor('#0a0a1a');
+
+    const records = loadRecords();
+    const updatedRecords = updateRecordsWithResult(
+      records,
+      levelIndex,
+      data.safetyScore,
+      data.maxSafetyScore,
+      data.items,
+      data.supervisorReviews
+    );
+    saveRecords(updatedRecords);
 
     const isLastLevel = levelIndex >= LEVELS.length - 1;
     const passed = data.safetyScore >= 40;

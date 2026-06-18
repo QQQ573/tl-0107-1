@@ -68,8 +68,29 @@ export class MenuScene extends Phaser.Scene {
       });
     });
 
-    const footer = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 40, '触控 / 鼠标均可操作', {
-      fontSize: '14px',
+    const profileBtnY = GAME_HEIGHT - 70;
+    const profileBg = this.add.graphics();
+    profileBg.fillStyle(0x9b59b6, 0.8);
+    profileBg.fillRoundedRect(GAME_WIDTH / 2 - 120, profileBtnY - 25, 240, 50, 12);
+    profileBg.lineStyle(2, 0x8e44ad, 0.8);
+    profileBg.strokeRoundedRect(GAME_WIDTH / 2 - 120, profileBtnY - 25, 240, 50, 12);
+
+    const profileText = this.add.text(GAME_WIDTH / 2, profileBtnY, '📋 练兵档案', {
+      fontSize: '20px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    });
+    profileText.setOrigin(0.5);
+
+    const profileZone = this.add.zone(GAME_WIDTH / 2, profileBtnY, 240, 50);
+    profileZone.setInteractive({ useHandCursor: true });
+    profileZone.on('pointerdown', () => {
+      this.scene.start('ProfileScene');
+    });
+
+    const footer = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 18, '触控 / 鼠标均可操作', {
+      fontSize: '12px',
       fontFamily: 'Arial, sans-serif',
       color: '#556677',
     });
