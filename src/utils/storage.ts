@@ -1,4 +1,4 @@
-import { GameRecords, LevelRecord, WrongItemRecord, ProcessedItem, STORAGE_KEY, ItemCategory } from '../types';
+import { GameRecords, LevelRecord, WrongItemRecord, ProcessedItem, STORAGE_KEY, ItemCategory, ItemDef } from '../types';
 import { LEVELS } from '../data/levels';
 
 const ZONE_LABELS: Record<ItemCategory, string> = {
@@ -186,6 +186,53 @@ export function getTopWrongItems(records: GameRecords, topN: number = 5): WrongI
 
 export function hasWrongItems(records: GameRecords): boolean {
   return records.levelRecords.some((lr) => lr.wrongItems.some((wi) => wi.wrongCount > 0));
+}
+
+export function getAllWrongItems(records: GameRecords): ItemDef[] {
+  const allItems = new Map<string, ItemDef>();
+
+  LEVELS.forEach((level) => {
+    level.items.forEach((item) => {
+      allItems.set(item.id, item);
+    });
+  });
+
+  const wrongItemDefs: ItemDef[] = [];
+  records.levelRecords.forEach((lr) => {
+    lr.wrongItems.forEach((wi) => {
+      if (wi.wrongCount > 0) {
+        const itemDef = allItems.get(wi.itemId);
+        if (itemDef) {
+          wrongItemDefs.push(itemDef);
+        }
+      }
+    });
+  });
+
+  return wrongItemDefs;
+}
+
+export function updateWrongItemsAfterPractice(
+  records: GameRecords,
+  practiceItems: ProcessedItem[]
+): GameRecords {
+  const newRecords = { ...records };
+  newRecords.levelRecords = records.levelRecords.map((lr) => ({ ...lr, wrongItems: [...lr.wrongItems] }));
+
+  practiceItems
+    .filter((i) => i.correct)
+    .forEach((item) => {
+      const itemId = item.def.id;
+      for (const lr of newRecords.levelRecords) {
+        const wi = lr.wrongItems.find((w) => w.itemId === itemId);
+        if (wi && wi.wrongCount > 0) {
+          wi.wrongCount = Math.max(0, wi.wrongCount - 1);
+          break;
+        }
+      }
+    });
+
+  return newRecords;
 }
 
 export function formatTime(timestamp: number): string {

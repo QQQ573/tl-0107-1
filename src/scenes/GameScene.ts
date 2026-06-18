@@ -49,12 +49,14 @@ export class GameScene extends Phaser.Scene {
   private conveyorOffset: number = 0;
   private timeLimitSeconds: number = 120;
   private lastSpawnTime: number = 0;
+  private isWrongPractice: boolean = false;
+  private wrongPracticeItems: ItemDef[] = [];
 
   constructor() {
     super({ key: 'GameScene' });
   }
 
-  init(data: { levelIndex: number }) {
+  init(data: { levelIndex: number; isWrongPractice?: boolean; wrongPracticeItems?: ItemDef[] }) {
     this.levelIndex = data.levelIndex ?? 0;
     this.safetyScore = 100;
     this.maxSafetyScore = 100;
@@ -72,24 +74,49 @@ export class GameScene extends Phaser.Scene {
     this.lastSpawnTime = 0;
     this.timeLimitSeconds = 120;
     this.zones = [];
+    this.isWrongPractice = data.isWrongPractice ?? false;
+    this.wrongPracticeItems = data.wrongPracticeItems ?? [];
   }
 
   create() {
     try {
-      const level = LEVELS[this.levelIndex];
-      this.targetCount = level.targetCount;
-      this.timeLimitSeconds = level.timeLimitSeconds;
-      this.levelStartTime = this.time.now;
-
       this.cameras.main.setBackgroundColor('#0a0a1a');
 
       this.buildConveyorBelt();
       this.buildZones();
       this.buildHUD();
-      this.buildRuleHint(level);
 
-      this.itemQueue = this.generateItemQueue(level);
-      console.log('GameScene created, queue length:', this.itemQueue.length);
+      if (this.isWrongPractice && this.wrongPracticeItems.length > 0) {
+        const practiceItems = [...this.wrongPracticeItems, ...this.wrongPracticeItems];
+        this.itemQueue = this.safeShuffle(practiceItems);
+        this.targetCount = this.itemQueue.length;
+        this.timeLimitSeconds = Math.max(60, this.targetCount * 10);
+        this.levelStartTime = this.time.now;
+
+        const title = this.add.text(GAME_WIDTH / 2, 110, '🔥 错题特训模式', {
+          fontSize: '24px',
+          fontFamily: 'Arial, sans-serif',
+          color: '#e67e22',
+          fontStyle: 'bold',
+        });
+        title.setOrigin(0.5);
+
+        const desc = this.add.text(GAME_WIDTH / 2, 140, '答对可减少错题计数，加油！', {
+          fontSize: '14px',
+          fontFamily: 'Arial, sans-serif',
+          color: '#aabbcc',
+        });
+        desc.setOrigin(0.5);
+      } else {
+        const level = LEVELS[this.levelIndex];
+        this.targetCount = level.targetCount;
+        this.timeLimitSeconds = level.timeLimitSeconds;
+        this.levelStartTime = this.time.now;
+        this.buildRuleHint(level);
+        this.itemQueue = this.generateItemQueue(level);
+      }
+
+      console.log('GameScene created, queue length:', this.itemQueue.length, 'isWrongPractice:', this.isWrongPractice);
 
       this.time.addEvent({
         delay: 800,
@@ -772,6 +799,7 @@ export class GameScene extends Phaser.Scene {
       averageTimeSeconds: averageTime,
       supervisorReviews: this.supervisorReviews,
       confusionRanking,
+      isWrongPractice: this.isWrongPractice,
     });
   }
 }

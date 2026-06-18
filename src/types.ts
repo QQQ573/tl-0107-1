@@ -73,6 +73,11 @@ export interface GameRecords {
   lastPlayTime: number;
 }
 
+export interface WrongPracticeSession {
+  isWrongPractice: true;
+  items: ItemDef[];
+}
+
 export const GAME_WIDTH = 960;
 export const GAME_HEIGHT = 640;
 export const STORAGE_KEY = 'luggage_check_game_records';

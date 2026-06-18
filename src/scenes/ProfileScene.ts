@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, GameRecords, WrongItemRecord } from '../types';
-import { LEVELS } from '../data/levels';
-import { loadRecords, getGlobalAccuracy, getTopWrongItems, hasWrongItems, formatTime } from '../utils/storage';
+import { loadRecords, getGlobalAccuracy, getTopWrongItems, hasWrongItems, formatTime, getAllWrongItems } from '../utils/storage';
 
 export class ProfileScene extends Phaser.Scene {
   private records!: GameRecords;
@@ -264,6 +263,15 @@ export class ProfileScene extends Phaser.Scene {
   }
 
   private startWrongPractice() {
-    console.log('错题特训功能开发中...');
+    const wrongItems = getAllWrongItems(this.records);
+    if (wrongItems.length === 0) {
+      return;
+    }
+
+    this.scene.start('GameScene', {
+      levelIndex: 0,
+      isWrongPractice: true,
+      wrongPracticeItems: wrongItems,
+    });
   }
 }
