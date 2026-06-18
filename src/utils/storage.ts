@@ -13,7 +13,7 @@ function createEmptyRecords(): GameRecords {
       level: level.level,
       bestSafetyScore: 0,
       bestAccuracy: 0,
-      bestSupervisorReviews: Infinity,
+      bestSupervisorReviews: 999,
       playCount: 0,
       stars: 0,
       completed: false,
@@ -34,21 +34,25 @@ export function loadRecords(): GameRecords {
       return createEmptyRecords();
     }
     const parsed = JSON.parse(raw) as GameRecords;
-    if (!parsed.levelRecords || parsed.levelRecords.length !== LEVELS.length) {
-      const records = createEmptyRecords();
+    const records = createEmptyRecords();
+    if (parsed.levelRecords && Array.isArray(parsed.levelRecords)) {
       parsed.levelRecords.forEach((lr) => {
         const idx = lr.level - 1;
         if (idx >= 0 && idx < records.levelRecords.length) {
-          records.levelRecords[idx] = { ...records.levelRecords[idx], ...lr };
+          records.levelRecords[idx] = {
+            ...records.levelRecords[idx],
+            ...lr,
+            bestSupervisorReviews: lr.bestSupervisorReviews ?? 999,
+            wrongItems: Array.isArray(lr.wrongItems) ? lr.wrongItems : [],
+          };
         }
       });
-      records.totalPlayCount = parsed.totalPlayCount || 0;
-      records.totalCorrectCount = parsed.totalCorrectCount || 0;
-      records.totalItemCount = parsed.totalItemCount || 0;
-      records.lastPlayTime = parsed.lastPlayTime || 0;
-      return records;
     }
-    return parsed;
+    records.totalPlayCount = parsed.totalPlayCount || 0;
+    records.totalCorrectCount = parsed.totalCorrectCount || 0;
+    records.totalItemCount = parsed.totalItemCount || 0;
+    records.lastPlayTime = parsed.lastPlayTime || 0;
+    return records;
   } catch (e) {
     console.warn('Failed to load game records:', e);
     return createEmptyRecords();

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, GameRecords, WrongItemRecord } from '../types';
+import { LEVELS } from '../data/levels';
 import { loadRecords, getGlobalAccuracy, getTopWrongItems, hasWrongItems, formatTime, getAllWrongItems } from '../utils/storage';
 
 export class ProfileScene extends Phaser.Scene {
@@ -78,8 +79,8 @@ export class ProfileScene extends Phaser.Scene {
   }
 
   private buildLevelCards() {
-    const cardY = 190;
-    const cardH = 160;
+    const cardY = 180;
+    const cardH = 150;
     const gap = 20;
     const cardW = (GAME_WIDTH - 120 - gap * 2) / 3;
     const startX = 60;
@@ -155,11 +156,11 @@ export class ProfileScene extends Phaser.Scene {
 
   private buildTopWrongItems() {
     const topItems = getTopWrongItems(this.records, 5);
-    const panelY = 375;
+    const panelY = 350;
     const panelX = 60;
     const panelW = GAME_WIDTH - 120;
     const itemCount = Math.max(topItems.length, 1);
-    const panelH = 50 + itemCount * 36;
+    const panelH = 42 + itemCount * 34;
 
     const panel = this.add.graphics();
     panel.fillStyle(0x16213e, 0.8);
@@ -167,7 +168,7 @@ export class ProfileScene extends Phaser.Scene {
     panel.lineStyle(2, 0xe74c3c, 0.5);
     panel.strokeRoundedRect(panelX, panelY, panelW, panelH, 12);
 
-    this.add.text(panelX + 20, panelY + 18, '📝 最易错物品 TOP5', {
+    this.add.text(panelX + 20, panelY + 14, '📝 最易错物品 TOP5', {
       fontSize: '18px',
       fontFamily: 'Arial, sans-serif',
       color: '#e74c3c',
@@ -175,14 +176,14 @@ export class ProfileScene extends Phaser.Scene {
     });
 
     if (topItems.length === 0) {
-      this.add.text(panelX + panelW / 2, panelY + panelH / 2 + 10, '🎉 暂无错题记录，继续保持!', {
+      this.add.text(panelX + panelW / 2, panelY + panelH / 2 + 5, '🎉 暂无错题记录，继续保持!', {
         fontSize: '16px',
         fontFamily: 'Arial, sans-serif',
         color: '#2ecc71',
       }).setOrigin(0.5);
     } else {
       topItems.forEach((item: WrongItemRecord, i: number) => {
-        const y = panelY + 50 + i * 36;
+        const y = panelY + 42 + i * 34;
 
         const rank = this.add.text(panelX + 30, y, `${i + 1}.`, {
           fontSize: '15px',
@@ -215,27 +216,28 @@ export class ProfileScene extends Phaser.Scene {
   }
 
   private buildBottomButtons() {
-    const btnY = GAME_HEIGHT - 60;
+    const btnY = GAME_HEIGHT - 45;
+    const btnH = 44;
     const hasWrong = hasWrongItems(this.records);
 
     const backBg = this.add.graphics();
     backBg.fillStyle(0x7f8c8d, 1);
-    backBg.fillRoundedRect(60, btnY - 25, 160, 50, 10);
-    const backText = this.add.text(140, btnY, '🏠 返回菜单', {
-      fontSize: '18px',
+    backBg.fillRoundedRect(60, btnY - btnH / 2, 150, btnH, 10);
+    const backText = this.add.text(135, btnY, '🏠 返回菜单', {
+      fontSize: '17px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     });
     backText.setOrigin(0.5);
 
-    const backZone = this.add.zone(140, btnY, 160, 50);
+    const backZone = this.add.zone(135, btnY, 150, btnH);
     backZone.setInteractive({ useHandCursor: true });
     backZone.on('pointerdown', () => {
       this.scene.start('MenuScene');
     });
 
-    const practiceBtnX = GAME_WIDTH - 60 - 180;
+    const practiceBtnX = GAME_WIDTH - 60 - 170;
     const practiceBg = this.add.graphics();
 
     if (hasWrong) {
@@ -243,10 +245,10 @@ export class ProfileScene extends Phaser.Scene {
     } else {
       practiceBg.fillStyle(0x555555, 0.5);
     }
-    practiceBg.fillRoundedRect(practiceBtnX, btnY - 25, 180, 50, 10);
+    practiceBg.fillRoundedRect(practiceBtnX, btnY - btnH / 2, 170, btnH, 10);
 
-    const practiceText = this.add.text(practiceBtnX + 90, btnY, '🔥 错题特训', {
-      fontSize: '18px',
+    const practiceText = this.add.text(practiceBtnX + 85, btnY, '🔥 错题特训', {
+      fontSize: '17px',
       fontFamily: 'Arial, sans-serif',
       color: hasWrong ? '#ffffff' : '#888888',
       fontStyle: 'bold',
@@ -254,7 +256,7 @@ export class ProfileScene extends Phaser.Scene {
     practiceText.setOrigin(0.5);
 
     if (hasWrong) {
-      const practiceZone = this.add.zone(practiceBtnX + 90, btnY, 180, 50);
+      const practiceZone = this.add.zone(practiceBtnX + 85, btnY, 170, btnH);
       practiceZone.setInteractive({ useHandCursor: true });
       practiceZone.on('pointerdown', () => {
         this.startWrongPractice();
