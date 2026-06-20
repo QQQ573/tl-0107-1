@@ -38,6 +38,7 @@ export interface LevelResult {
   averageTimeSeconds: number;
   supervisorReviews: number;
   confusionRanking: ConfusionEntry[];
+  quickJudgments: number;
 }
 
 export interface ConfusionEntry {
@@ -71,11 +72,25 @@ export interface GameRecords {
   totalCorrectCount: number;
   totalItemCount: number;
   lastPlayTime: number;
+  unlockedAchievementIds: string[];
+  achievementUnlockTimes: Record<string, number>;
+  fastestPlays: number;
 }
 
 export interface WrongPracticeSession {
   isWrongPractice: true;
   items: ItemDef[];
+}
+
+export type AchievementCategory = 'camp' | 'skill' | 'collection' | 'special';
+
+export interface AchievementDef {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  category: AchievementCategory;
+  condition: (records: GameRecords, currentResult?: LevelResult & { levelIndex: number; isWrongPractice?: boolean }) => boolean;
 }
 
 export const GAME_WIDTH = 960;

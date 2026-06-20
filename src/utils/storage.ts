@@ -1,5 +1,6 @@
-import { GameRecords, LevelRecord, WrongItemRecord, ProcessedItem, STORAGE_KEY, ItemCategory, ItemDef } from '../types';
+import { GameRecords, LevelRecord, WrongItemRecord, ProcessedItem, STORAGE_KEY, ItemCategory, ItemDef, LevelResult, AchievementDef } from '../types';
 import { LEVELS } from '../data/levels';
+import { ACHIEVEMENTS } from '../data/achievements';
 
 const ZONE_LABELS: Record<ItemCategory, string> = {
   allowed: '可入营',
@@ -24,6 +25,8 @@ function createEmptyRecords(): GameRecords {
     totalCorrectCount: 0,
     totalItemCount: 0,
     lastPlayTime: 0,
+    unlockedAchievementIds: [],
+    achievementUnlockTimes: {},
   };
 }
 
@@ -52,6 +55,8 @@ export function loadRecords(): GameRecords {
     records.totalCorrectCount = parsed.totalCorrectCount || 0;
     records.totalItemCount = parsed.totalItemCount || 0;
     records.lastPlayTime = parsed.lastPlayTime || 0;
+    records.unlockedAchievementIds = Array.isArray(parsed.unlockedAchievementIds) ? parsed.unlockedAchievementIds : [];
+    records.achievementUnlockTimes = parsed.achievementUnlockTimes && typeof parsed.achievementUnlockTimes === 'object' ? parsed.achievementUnlockTimes : {};
     return records;
   } catch (e) {
     console.warn('Failed to load game records:', e);
@@ -247,4 +252,43 @@ export function formatTime(timestamp: number): string {
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
   return `${month}-${day} ${hours}:${minutes}`;
+}
+
+export interface AchievementUnlockResult {
+  records: GameRecords;
+  newlyUnlocked: AchievementDef[];
+}
+
+export function checkAndUnlockAchievements(
+  records: GameRecords,
+  currentResult?: LevelResult & { levelIndex: number; isWrongPractice?: boolean; quickJudgments?: number }
+): AchievementUnlockResult {
+  const newlyUnlocked: AchievementDef[] = [];
+  const newRecords = { ...records };
+  newRecords.unlockedAchievementIds = [...records.unlockedAchievementIds];
+  newRecords.achievementUnlockTimes = { ...records.achievementUnlockTimes };
+
+  const now = Date.now();
+
+  ACHIEVEMENTS.forEach((achievement) => {
+    if (newRecords.unlockedAchievementIds.includes(achievement.id)) {
+      return;
+    }
+
+    try {
+      if (achievement.condition(newRecords, currentResult as any)) {
+        newRecords.unlockedAchievementIds.push(achievement.id);
+        newRecords.achievementUnlockTimes[achievement.id] = now;
+        newlyUnlocked.push(achievement);
+      }
+    } catch (e) {
+      console.warn(`Error checking achievement ${achievement.id}:`, e);
+    }
+  });
+
+  return { records: newRecords, newlyUnlocked };
+}
+
+export function getAchievementById(id: string): AchievementDef | undefined {
+  return ACHIEVEMENTS.find((a) => a.id === id);
 }

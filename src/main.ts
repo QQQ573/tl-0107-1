@@ -6,6 +6,7 @@ import { RuleCardScene } from './scenes/RuleCardScene';
 import { GameScene } from './scenes/GameScene';
 import { ResultsScene } from './scenes/ResultsScene';
 import { ProfileScene } from './scenes/ProfileScene';
+import { AchievementScene } from './scenes/AchievementScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -23,7 +24,7 @@ const config: Phaser.Types.Core.GameConfig = {
       capture: true,
     },
   },
-  scene: [BootScene, MenuScene, RuleCardScene, GameScene, ResultsScene, ProfileScene],
+  scene: [BootScene, MenuScene, RuleCardScene, GameScene, ResultsScene, ProfileScene, AchievementScene],
 };
 
 const game = new Phaser.Game(config);

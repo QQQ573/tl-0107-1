@@ -51,6 +51,10 @@ export class GameScene extends Phaser.Scene {
   private lastSpawnTime: number = 0;
   private isWrongPractice: boolean = false;
   private wrongPracticeItems: ItemDef[] = [];
+  private isPaused: boolean = false;
+  private pauseOverlay: Phaser.GameObjects.Container | null = null;
+  private pauseAccumulatedTime: number = 0;
+  private pauseStartTime: number = 0;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -76,6 +80,10 @@ export class GameScene extends Phaser.Scene {
     this.zones = [];
     this.isWrongPractice = data.isWrongPractice ?? false;
     this.wrongPracticeItems = data.wrongPracticeItems ?? [];
+    this.isPaused = false;
+    this.pauseOverlay = null;
+    this.pauseAccumulatedTime = 0;
+    this.pauseStartTime = 0;
   }
 
   create() {
@@ -123,6 +131,11 @@ export class GameScene extends Phaser.Scene {
         callback: this.spawnNextItem,
         callbackScope: this,
       });
+
+      this.buildPauseButton();
+      this.input.keyboard!.on('keydown-ESC', () => {
+        this.togglePause();
+      });
     } catch (e) {
       console.error('Error in GameScene create:', e);
     }
@@ -131,6 +144,7 @@ export class GameScene extends Phaser.Scene {
   update(_time: number, _delta: number) {
     try {
       if (this.finished) return;
+      if (this.isPaused) return;
 
       this.conveyorOffset += 0.5;
       if (this.conveyorBelt && this.conveyorBelt.active) {
@@ -142,7 +156,7 @@ export class GameScene extends Phaser.Scene {
         return;
       }
 
-      const elapsed = (this.time.now - this.levelStartTime) / 1000;
+      const elapsed = (this.time.now - this.levelStartTime - this.pauseAccumulatedTime) / 1000;
       const remaining = Math.max(0, this.timeLimitSeconds - elapsed);
       if (this.timerText && this.timerText.active) {
         this.timerText.setText(`⏱ ${Math.ceil(remaining)}s`);
@@ -791,6 +805,8 @@ export class GameScene extends Phaser.Scene {
       .sort((a, b) => b.timesMisclassified - a.timesMisclassified)
       .slice(0, 5);
 
+    const quickJudgments = totalItems.filter((i) => i.correct && i.timeSeconds <= 2).length;
+
     this.scene.start('ResultsScene', {
       levelIndex: this.levelIndex,
       safetyScore: this.safetyScore,
@@ -800,6 +816,215 @@ export class GameScene extends Phaser.Scene {
       supervisorReviews: this.supervisorReviews,
       confusionRanking,
       isWrongPractice: this.isWrongPractice,
+      quickJudgments,
     });
+  }
+
+  private buildPauseButton() {
+    const btnX = 55;
+    const btnY = 30;
+    const btnW = 70;
+    const btnH = 36;
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x34495e, 0.9);
+    bg.fillRoundedRect(btnX - btnW / 2, btnY - btnH / 2, btnW, btnH, 8);
+    bg.lineStyle(1, 0x5d6d7e, 0.8);
+    bg.strokeRoundedRect(btnX - btnW / 2, btnY - btnH / 2, btnW, btnH, 8);
+    bg.setDepth(50);
+
+    const text = this.add.text(btnX, btnY, '⏸ 暂停', {
+      fontSize: '15px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    });
+    text.setOrigin(0.5);
+    text.setDepth(51);
+
+    const zone = this.add.zone(btnX, btnY, btnW, btnH);
+    zone.setInteractive({ useHandCursor: true });
+    zone.setDepth(52);
+    zone.on('pointerdown', () => {
+      this.togglePause();
+    });
+  }
+
+  private togglePause() {
+    if (this.finished || this.isSupervisorReview) return;
+
+    this.isPaused = !this.isPaused;
+
+    if (this.isPaused) {
+      this.pauseStartTime = this.time.now;
+      this.showPauseOverlay();
+      if (this.currentItem && this.currentItem.input) {
+        this.currentItem.input.enabled = false;
+      }
+    } else {
+      this.pauseAccumulatedTime += this.time.now - this.pauseStartTime;
+      this.hidePauseOverlay();
+      if (this.currentItem && this.currentItem.input) {
+        this.currentItem.input.enabled = true;
+      }
+    }
+  }
+
+  private showPauseOverlay() {
+    if (this.pauseOverlay) return;
+
+    this.pauseOverlay = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+    this.pauseOverlay.setDepth(100);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.7);
+    bg.fillRect(-GAME_WIDTH / 2, -GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT);
+    this.pauseOverlay.add(bg);
+
+    const title = this.add.text(0, -100, '⏸ 游戏暂停', {
+      fontSize: '40px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    });
+    title.setOrigin(0.5);
+    this.pauseOverlay.add(title);
+
+    const btnW = 200;
+    const btnH = 55;
+    const btnGap = 20;
+
+    const resumeBg = this.add.graphics();
+    resumeBg.fillStyle(0x27ae60, 1);
+    resumeBg.fillRoundedRect(-btnW / 2, -20 - btnH / 2, btnW, btnH, 12);
+    this.pauseOverlay.add(resumeBg);
+
+    const resumeText = this.add.text(0, -20, '▶ 继续游戏', {
+      fontSize: '22px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    });
+    resumeText.setOrigin(0.5);
+    this.pauseOverlay.add(resumeText);
+
+    const resumeZone = this.add.zone(0, -20, btnW, btnH);
+    resumeZone.setInteractive({ useHandCursor: true });
+    resumeZone.on('pointerdown', () => {
+      this.togglePause();
+    });
+    this.pauseOverlay.add(resumeZone);
+
+    const menuBg = this.add.graphics();
+    menuBg.fillStyle(0xe74c3c, 1);
+    menuBg.fillRoundedRect(-btnW / 2, -20 + btnGap + btnH / 2 + btnGap, btnW, btnH, 12);
+    this.pauseOverlay.add(menuBg);
+
+    const menuText = this.add.text(0, -20 + btnGap + btnH + btnGap, '🏠 返回菜单', {
+      fontSize: '22px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    });
+    menuText.setOrigin(0.5);
+    this.pauseOverlay.add(menuText);
+
+    const menuZone = this.add.zone(0, -20 + btnGap + btnH + btnGap, btnW, btnH);
+    menuZone.setInteractive({ useHandCursor: true });
+    menuZone.on('pointerdown', () => {
+      this.showQuitConfirm();
+    });
+    this.pauseOverlay.add(menuZone);
+  }
+
+  private hidePauseOverlay() {
+    if (this.pauseOverlay) {
+      this.pauseOverlay.destroy();
+      this.pauseOverlay = null;
+    }
+  }
+
+  private showQuitConfirm() {
+    if (!this.pauseOverlay) return;
+
+    const confirmOverlay = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+    confirmOverlay.setDepth(110);
+
+    const dim = this.add.graphics();
+    dim.fillStyle(0x000000, 0.5);
+    dim.fillRect(-GAME_WIDTH / 2, -GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT);
+    confirmOverlay.add(dim);
+
+    const panelW = 400;
+    const panelH = 180;
+
+    const panel = this.add.graphics();
+    panel.fillStyle(0x1a1a2e, 1);
+    panel.fillRoundedRect(-panelW / 2, -panelH / 2, panelW, panelH, 15);
+    panel.lineStyle(2, 0xe74c3c, 0.8);
+    panel.strokeRoundedRect(-panelW / 2, -panelH / 2, panelW, panelH, 15);
+    confirmOverlay.add(panel);
+
+    const title = this.add.text(0, -50, '⚠ 确定返回菜单?', {
+      fontSize: '24px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#e74c3c',
+      fontStyle: 'bold',
+    });
+    title.setOrigin(0.5);
+    confirmOverlay.add(title);
+
+    const desc = this.add.text(0, -10, '本局进度将不会保存', {
+      fontSize: '16px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#aabbcc',
+    });
+    desc.setOrigin(0.5);
+    confirmOverlay.add(desc);
+
+    const btnW = 140;
+    const btnH = 44;
+    const btnY = 45;
+
+    const cancelBg = this.add.graphics();
+    cancelBg.fillStyle(0x7f8c8d, 1);
+    cancelBg.fillRoundedRect(-btnW - 15, btnY - btnH / 2, btnW, btnH, 10);
+    confirmOverlay.add(cancelBg);
+
+    const cancelText = this.add.text(-btnW / 2 - 15, btnY, '取消', {
+      fontSize: '18px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+    });
+    cancelText.setOrigin(0.5);
+    confirmOverlay.add(cancelText);
+
+    const cancelZone = this.add.zone(-btnW / 2 - 15, btnY, btnW, btnH);
+    cancelZone.setInteractive({ useHandCursor: true });
+    cancelZone.on('pointerdown', () => {
+      confirmOverlay.destroy();
+    });
+    confirmOverlay.add(cancelZone);
+
+    const confirmBg = this.add.graphics();
+    confirmBg.fillStyle(0xe74c3c, 1);
+    confirmBg.fillRoundedRect(15, btnY - btnH / 2, btnW, btnH, 10);
+    confirmOverlay.add(confirmBg);
+
+    const confirmText = this.add.text(15 + btnW / 2, btnY, '确定离开', {
+      fontSize: '18px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    });
+    confirmText.setOrigin(0.5);
+    confirmOverlay.add(confirmText);
+
+    const confirmZone = this.add.zone(15 + btnW / 2, btnY, btnW, btnH);
+    confirmZone.setInteractive({ useHandCursor: true });
+    confirmZone.on('pointerdown', () => {
+      this.scene.start('MenuScene');
+    });
+    confirmOverlay.add(confirmZone);
   }
 }

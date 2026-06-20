@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, GameRecords, WrongItemRecord } from '../types';
 import { LEVELS } from '../data/levels';
+import { ACHIEVEMENTS } from '../data/achievements';
 import { loadRecords, getGlobalAccuracy, getTopWrongItems, hasWrongItems, formatTime, getAllWrongItems } from '../utils/storage';
 
 export class ProfileScene extends Phaser.Scene {
@@ -31,6 +32,30 @@ export class ProfileScene extends Phaser.Scene {
       fontStyle: 'bold',
     });
     title.setOrigin(0.5);
+
+    const unlockedCount = this.records.unlockedAchievementIds.length;
+    const badgeBtnX = GAME_WIDTH - 70;
+    const badgeBtnY = 42;
+
+    const badgeBg = this.add.graphics();
+    badgeBg.fillStyle(0x9b59b6, 0.9);
+    badgeBg.fillRoundedRect(badgeBtnX - 50, badgeBtnY - 20, 100, 40, 10);
+    badgeBg.lineStyle(2, 0x8e44ad, 0.8);
+    badgeBg.strokeRoundedRect(badgeBtnX - 50, badgeBtnY - 20, 100, 40, 10);
+
+    const badgeText = this.add.text(badgeBtnX, badgeBtnY, `🏆 ${unlockedCount}/${ACHIEVEMENTS.length}`, {
+      fontSize: '15px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    });
+    badgeText.setOrigin(0.5);
+
+    const badgeZone = this.add.zone(badgeBtnX, badgeBtnY, 100, 40);
+    badgeZone.setInteractive({ useHandCursor: true });
+    badgeZone.on('pointerdown', () => {
+      this.scene.start('AchievementScene');
+    });
 
     this.buildSummaryPanel();
     this.buildLevelCards();

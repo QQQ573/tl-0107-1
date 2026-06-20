@@ -1,27 +1,32 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, LevelResult, ConfusionEntry } from '../types';
+import { GAME_WIDTH, GAME_HEIGHT, LevelResult, ConfusionEntry, AchievementDef } from '../types';
 import { LEVELS } from '../data/levels';
-import { loadRecords, saveRecords, updateRecordsWithResult, updateWrongItemsAfterPractice, hasWrongItems, getAllWrongItems } from '../utils/storage';
+import { loadRecords, saveRecords, updateRecordsWithResult, updateWrongItemsAfterPractice, hasWrongItems, getAllWrongItems, checkAndUnlockAchievements } from '../utils/storage';
 
 export class ResultsScene extends Phaser.Scene {
   constructor() {
     super({ key: 'ResultsScene' });
   }
 
-  create(data: LevelResult & { levelIndex: number; isWrongPractice?: boolean }) {
+  create(data: LevelResult & { levelIndex: number; isWrongPractice?: boolean; quickJudgments?: number }) {
     const isWrongPractice = data.isWrongPractice ?? false;
     const levelIndex = data.levelIndex ?? 0;
     const level = LEVELS[levelIndex];
     this.cameras.main.setBackgroundColor('#0a0a1a');
 
     const records = loadRecords();
+    let updatedRecords = records;
+    let newlyUnlocked: AchievementDef[] = [];
 
     if (isWrongPractice) {
-      const updatedRecords = updateWrongItemsAfterPractice(records, data.items);
+      updatedRecords = updateWrongItemsAfterPractice(records, data.items);
+      const achievementResult = checkAndUnlockAchievements(updatedRecords, data as any);
+      updatedRecords = achievementResult.records;
+      newlyUnlocked = achievementResult.newlyUnlocked;
       saveRecords(updatedRecords);
       this.buildWrongPracticeResults(data, updatedRecords);
     } else {
-      const updatedRecords = updateRecordsWithResult(
+      updatedRecords = updateRecordsWithResult(
         records,
         levelIndex,
         data.safetyScore,
@@ -29,8 +34,15 @@ export class ResultsScene extends Phaser.Scene {
         data.items,
         data.supervisorReviews
       );
+      const achievementResult = checkAndUnlockAchievements(updatedRecords, data as any);
+      updatedRecords = achievementResult.records;
+      newlyUnlocked = achievementResult.newlyUnlocked;
       saveRecords(updatedRecords);
       this.buildNormalResults(data, levelIndex, level);
+    }
+
+    if (newlyUnlocked.length > 0) {
+      this.showAchievementToast(newlyUnlocked);
     }
   }
 
@@ -308,6 +320,93 @@ export class ResultsScene extends Phaser.Scene {
     menuZone.setInteractive({ useHandCursor: true });
     menuZone.on('pointerdown', () => {
       this.scene.start('MenuScene');
+    });
+  }
+
+  private showAchievementToast(achievements: AchievementDef[]) {
+    const toastY = 60;
+    const toastW = 320;
+    const toastH = 70 + achievements.length * 36;
+
+    const container = this.add.container(GAME_WIDTH / 2, -toastH);
+    container.setDepth(200);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0a0a1a, 0.95);
+    bg.fillRoundedRect(-toastW / 2, -toastH / 2, toastW, toastH, 12);
+    bg.lineStyle(2, 0xf39c12, 0.9);
+    bg.strokeRoundedRect(-toastW / 2, -toastH / 2, toastW, toastH, 12);
+    container.add(bg);
+
+    const title = this.add.text(0, -toastH / 2 + 18, '🎉 新徽章解锁!', {
+      fontSize: '18px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#f39c12',
+      fontStyle: 'bold',
+    });
+    title.setOrigin(0.5);
+    container.add(title);
+
+    achievements.forEach((achievement, i) => {
+      const y = -toastH / 2 + 50 + i * 36;
+
+      const icon = this.add.text(-toastW / 2 + 30, y, achievement.icon, {
+        fontSize: '28px',
+        fontFamily: 'Arial, sans-serif',
+      });
+      icon.setOrigin(0, 0.5);
+      container.add(icon);
+
+      const name = this.add.text(-toastW / 2 + 70, y - 6, achievement.title, {
+        fontSize: '15px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      });
+      name.setOrigin(0, 0);
+      container.add(name);
+
+      const desc = this.add.text(-toastW / 2 + 70, y + 12, achievement.description, {
+        fontSize: '12px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#aabbcc',
+      });
+      desc.setOrigin(0, 0);
+      container.add(desc);
+    });
+
+    const hint = this.add.text(0, toastH / 2 - 14, '点击查看全部徽章 →', {
+      fontSize: '12px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#7f8c8d',
+    });
+    hint.setOrigin(0.5);
+    container.add(hint);
+
+    const hitZone = this.add.zone(0, 0, toastW, toastH);
+    hitZone.setInteractive({ useHandCursor: true });
+    hitZone.on('pointerdown', () => {
+      this.scene.start('AchievementScene');
+    });
+    container.add(hitZone);
+
+    this.tweens.add({
+      targets: container,
+      y: toastY + toastH / 2,
+      duration: 500,
+      ease: 'Back.easeOut',
+    });
+
+    this.time.delayedCall(3000, () => {
+      this.tweens.add({
+        targets: container,
+        y: -toastH,
+        duration: 400,
+        ease: 'Back.easeIn',
+        onComplete: () => {
+          container.destroy();
+        },
+      });
     });
   }
 }
